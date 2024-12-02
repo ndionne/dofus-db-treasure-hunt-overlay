@@ -1,41 +1,34 @@
 import path from 'path'
-import { BrowserWindow, app, ipcMain, shell } from 'electron'
-import { createWindowPositionStore, createLanguageStore } from './store'
-import type { Languages } from './types/languages'
+import { BrowserWindow, app, ipcMain, shell, session} from 'electron'
+import { createWindowPositionStore } from './store'
 
 let win: BrowserWindow | null = null
 const js = `
+  // Hide everything except the element with id 'hunt-solver-tool'
+  const hideAllExcept = () => {
+    const targetElement = document.querySelector('#hunt-solver-tool');
+    if (targetElement) {
+      // Hide everything
+      document.body.style.visibility = 'hidden';
+
+      // Move the target element to the top of the page
+      targetElement.style.position = 'absolute';  // Position it at the top
+      targetElement.style.top = '0';  // Align it to the top of the page
+      targetElement.style.left = '0'; // Align it to the left of the page
+      targetElement.style.width = '100%'; // Make sure it stretches across the screen
+      targetElement.style.visibility = 'visible';  // Ensure it's visible
+
+    }
+  };
+  hideAllExcept();
+
   const goToWebsite = document.createElement('a')
   const quitButton = document.createElement('button')
   const topLayout = document.createElement('div')
-  const dropDownDiv = document.createElement('div')
-  const languageButton = document.createElement('button')
-  const dropDownOptionsDiv = document.createElement('div')
-
-  const dropDownOptions = {
-    'English' : 'en',
-    'French' : 'fr',
-    'Deutsch' : 'de',
-    'Español' : 'es',
-    'Português' : 'pt',
-    'Italiano' : 'it'
-  }
-
-  Object.entries(dropDownOptions).forEach(([key, value]) => {
-    temp = document.createElement('a')
-    temp.innerText = key
-    temp.setAttribute('value' , value)
-    temp.setAttribute('id','language')
-    dropDownOptionsDiv.appendChild(temp)
-  })
-
 
   topLayout.classList.add('dmo-top-layout')
-  quitButton.classList.add('dmo-quit-btn')
-  languageButton.classList.add('dmo-quit-btn', 'dropbtn')
   goToWebsite.classList.add('dmo-go-to-website-btn')
-  dropDownDiv.classList.add('dropdown')
-  dropDownOptionsDiv.classList.add('dropdown-content')
+  quitButton.classList.add('dmo-quit-btn')
 
   quitButton.innerText = 'Quit app'
   quitButton.setAttribute('tab-index', '-1')
@@ -43,50 +36,51 @@ const js = `
     dmo.quit()
   })
 
-  goToWebsite.innerText = 'DOFUS DB'
+  goToWebsite.innerText = 'DOFUS POUR LES NOOBS'
   goToWebsite.setAttribute('tab-index', '-1')
   goToWebsite.addEventListener('click', (evt) => {
     evt.preventDefault()
     dmo.goToWebsite()
   })
 
-
-  dropDownOptionsDiv.setAttribute('id', 'dropdown')
-  languageButton.innerText = 'Language'
-  languageButton.setAttribute('tab-index', '-1')
-  languageButton.addEventListener('click',() =>{
-    document.getElementById('dropdown').classList.toggle('show')
-  })
-
-  dropDownDiv.appendChild(languageButton)
-  dropDownDiv.appendChild(dropDownOptionsDiv)
-
   topLayout.appendChild(goToWebsite)
-  topLayout.appendChild(dropDownDiv)
   topLayout.appendChild(quitButton)
-
-  document.querySelectorAll('input[type="number"]').forEach(elem => {
-    elem.setAttribute('type', 'text')
-  })
-
-  window.onclick = function(event){
-    if (!event.target.matches('.dropbtn')) {
-      const dropdown = document.querySelector('.dropdown-content');
-      if (dropdown.classList.contains('show')){
-        dropdown.classList.remove('show')
-      }
-    }
-  }
 
   document.body.appendChild(topLayout)
 
-  document.querySelectorAll('#language').forEach(elem => {
-    elem.addEventListener('click',() =>{
-      dmo.changeLanguage(elem.getAttribute('value'))
-    })
-  })
+  // Add a header to make the window draggable
+  const huntSolverTool = document.getElementById('hunt-solver-tool');
+          
+  const topLayer = document.createElement('div');
+  topLayer.id = 'hunt-solver-tool-header';
+  topLayer.style.cssText = 'width: 100%; height: 40px; background-color: transparent; color: white; display: flex; justify-content: center; align-items: center; cursor: move; app-region: drag; z-index: 9999;';
+  huntSolverTool.insertBefore(topLayer, huntSolverTool.firstChild);
+          
+  const contentArea = document.getElementById('hunt-solver-tool-content');
+  if (contentArea) {
+    contentArea.style.pointerEvents = 'auto';
+  }
 
+  // Select the dropdown and the button
+  const dropdown = document.getElementById('clue-choice-select');
+  const button = document.getElementById('hunt-elt3');
+
+  // Add event listener to dropdown for 'change' event
+  dropdown.addEventListener('change', function() {
+      const selectedValue = dropdown.value;
+
+      // Check if the selected value is not "0"
+      if (selectedValue !== '0') {
+          huntClueSearch();
+      }
+  });
+
+
+  // Start with the auto copy travel command enabled
+  const checkbox = document.getElementById('huntautocopy');
+  checkbox.checked = true;
 `
+
 const css = `
   .dmo-top-layout {
     position: fixed;
@@ -98,37 +92,13 @@ const css = `
     color: white;
     app-region: no-drag;
     margin-bottom: 100px;
-  }
-  .dropdown {
-    display: inline-block;
-  }
-  .dropdown a:hover {
-    background-color: var(--q-color-dark);
-  }
-  .dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: var(--q-color-primary);
-    min-width: 160px;
-    overflow: auto;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    app-region: no-drag;
-  }
-  .dropdown-content a {
-    color: white;
-    padding: 6px 8px;
-    text-decoration: none;
-    display: block;
-    cursor: pointer;
-  }
-  .show {
-    display: block;
+    visibility: visible !important;
   }
   .dmo-quit-btn {
     cursor: pointer;
     border: none;
     background: transparent;
-    color: inherit;
+    color: white;
   }
 
   .dmo-go-to-website-btn {
@@ -139,157 +109,107 @@ const css = `
 
   body {
     background: transparent !important;
-    border: 1px var(--q-color-primary) solid;
-    overflow: hidden;
+    border: 1px var(--q-color-primary) solid !important;
+    overflow: hidden !important;
+    color: white !important;
+    user-select: none !important;
+  }
+  
+  .hunt-solver-tool {
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .hunt-theme {
+    visibility: hidden !important;
   }
 
-  body, html {
-    height: 100vh !important;
+  .hunt-clue-result {
+    background: transparent !important;
+    padding: 0 !important;
+    margin-top: 0 !important;
   }
-
-  .treasure-hunt-directions, .q-field__inner {
-    background: var(--q-color-primary) !important;
-  }
-
-  main > div.bg-primary {
+  
+  .information-hunt {
     background: transparent !important;
   }
 
-  .q-page-container {
-    padding-top: 0 !important;
-  }
-
-  .q-page {
+  .hunt-clue-data form > div {
     padding: 0 !important;
   }
 
-  .q-page > div:first-child {
-    padding-top: 0;
+  hr.hrhunt {
+    visibility: hidden !important;
+    margin: 0 !important;
+    background-image: none !important;
+    height: 0 !important;
   }
 
-  .q-page > div > div:nth-child(3) { /* Buttons */
-    padding-top: 1rem;
-    -webkit-app-region: drag;
+  .information-hunt {
+    visibility: hidden !important;
   }
 
-  .q-page > div > div:nth-child(3) button,
-  .q-page > div > div:nth-child(3) label {
-    -webkit-app-region: no-drag;
+  .currentclue {
+    color: white !important;
   }
 
-  .q-page > div > div:nth-child(3) > span {
-    user-select: none;
-  }
-
-  .q-page > div > div:nth-child(7) {
-    margin-top: 1.5rem;
-  }
-
-  .q-page > div > div:nth-child(9) {
-    text-align: center;
-    font-size: 0.75rem;
-  }
-
-  main.q-page, #q-app > .q-layout {
-    min-height: unset !important;
-  }
-
-  .q-page > div > div:first-child, /* Title */
-  .q-page > div > div:nth-child(2), /* Position */
-  .q-page > div > div:nth-child(4), /* Direction */
-  .q-page > div > div:nth-child(6), /* Indice */
-  .q-page > div > a,
-  .q-header,
-  .q-card > div:nth-child(4),
-  .q-card > div.text-center.q-pa-xs.text-grey-6,
-  .q-loading-bar,
-  .q-footer,
-  .q-notifications {
-    display: none !important;
-  }
-
-  .q-card > div:first-child.text-h5, .q-card > div:nth-child(2).text-h6 {
-    font-size: 1rem;
-  }
-
-  .q-card > div:first-child.text-h5 i {
-    margin-right: 6px;
-    font-size: 1em !important;
-  }
-
-  .q-card > div:nth-child(2).text-h6 {
-    font-size: 0;
-    padding: 20px;
-  }
-
-  .q-card > div:nth-child(2).text-h6 span {
-    font-size: 1rem;
-  }
-
-  .q-layout__shadow::after {
+  .hunt-clue-result-direction {
+    color: white !important;
+    background: transparent !important;
+    border-left: none !important;
     box-shadow: none !important;
   }
 
-  .q-field__control {
-    padding: 0 4px !important;
+  .hunt-clue-result-position {
+    color: white !important;
+    background: transparent !important;
+    border-left: none !important;
+    box-shadow: none !important;
   }
 
-  .q-field__bottom, .q-field__append {
+  .clue-search-result > div {
+    margin: 0 !important;
+  }
+
+  .clue-search {
+    border: none !important;
+    margin: 0 !important;
+    background: transparent !important;
+    color: white !important;
+    height: auto !important;
     display: none !important;
   }
 
-  @media screen and (min-width: 599px) {
-    .q-page > div:first-child {
-      padding-right: 0;
-      padding-left: 0;
-    }
-
-    .q-card {
-      display: flex;
-      position: relative;
-      align-items: center;
-    }
-
-    .q-card > div:first-child.text-h5 {
-      position: absolute;
-      left: 0;
-      top: 0;
-    }
+  .hunt-tool-lang {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
   }
 
-  @media screen and (max-width: 599px) {
-    .q-page > div > div:nth-child(3) {
-      padding-top: 2rem;
-    }
-
-    .q-card > div:nth-child(2).text-h6, .q-card > div:first-child.text-h5 {
-      padding: 2px;
-    }
-
-    span button[type="button"][role="button"] {
-      font-size: 1rem !important;
-    }
-
-    .q-card {
-      width: 100%;
-    }
+  .hunt-direction-dpln > label {
+    margin: 0 15px !important;
+    padding: 0 !important;
+    height: 33px !important;
+    border-radius: 8px !important;
   }
 
-  @media screen and (max-width: 299px) {
-    span button[type="button"][role="button"] {
-      display: none !important;
-    }
+  .clue-seek {
+    display: none !important;
+  }
+
+  #hunt-result-coord {
+    user-select: text !important;
   }
 `
 
 function createWindow() {
   const winStore = createWindowPositionStore()
-  const languageStore = createLanguageStore()
 
   const { x = 0, y = 90 } = winStore.store
   win = new BrowserWindow({
-    width: 300,
-    height: 484,
+    width: 290,
+    height: 370,
     minWidth: 200,
     minHeight: 100,
     webPreferences: {
@@ -316,13 +236,31 @@ function createWindow() {
 
   void loadUrl()
 
+  // Intercept and block requests to other domains
+  const filter = {
+    urls: ['http://*/*', 'https://*/*'] // Matches all URLs
+  };
+
+  session.defaultSession.webRequest.onBeforeRequest(filter, (details, callback) => {
+    const domainAllowList = ['dofuspourlesnoobs.com', 'editmysite.com'];
+    const requestDomain = new URL(details.url).hostname;
+
+    // Block requests to domains other than those in the allow list
+    if (!domainAllowList.some(domain => requestDomain.endsWith(domain))) {
+      callback({ cancel: true });
+    } else {
+      callback({ cancel: false });
+    }
+  });
+
   win.webContents.on('did-finish-load', async () => {
     try {
-      await Promise.all([win?.webContents.insertCSS(css), win?.webContents.executeJavaScript(js)])
+      await Promise.all([win?.webContents.insertCSS(css),
+        win?.webContents.executeJavaScript(js)]);
 
       win?.show()
     } catch (err) {
-      console.error(err)
+      console.error("Failed during JavaScript execution:", err);
       app.quit()
     }
   })
@@ -336,16 +274,11 @@ function createWindow() {
   })
 
   async function loadUrl() {
-    await win?.loadURL(`https://dofusdb.fr/${languageStore.get('lan')}/tools/treasure-hunt`, { userAgent: 'Chrome' })
+    await win?.loadURL(`https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors.html`, { userAgent: "Chrome" })
   }
 
   ipcMain.handle('go-to-website', () => {
-    void shell.openExternal('https://dofusdb.fr/en/tools/treasure-hunt')
-  })
-
-  ipcMain.handle('changeLanguage', async (_, lan: Languages) => {
-    languageStore.set({ lan })
-    await loadUrl()
+    void shell.openExternal('https://www.dofuspourlesnoobs.com/')
   })
 }
 
