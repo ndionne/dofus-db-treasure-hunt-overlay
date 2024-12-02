@@ -4,7 +4,7 @@ Pour Windows, macOS et Linux.
 
 ## Résumé
 
-Affiche un overlay du site [Dofus Map - Hunt](https://dofus-map.com/hunt) pour permettre aux utilisateurs de Dofus Map ayant qu'un seul écran de pouvoir utiliser Dofus Map plus simplement.
+Affiche un overlay du site [Dofus pour les Noobs - Hunt](https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors.html) pour permettre aux utilisateurs ayant qu'un seul écran de pouvoir utiliser l'outil plus simplement.
 
 ## Démo
 
@@ -12,7 +12,7 @@ Affiche un overlay du site [Dofus Map - Hunt](https://dofus-map.com/hunt) pour p
 
 ## Installation
 
-Télécharger la dernière release sur ici [Releases](https://github.com/Kiyozz/dofus-hunt-overlay/releases).
+Télécharger la dernière release sur ici [Releases](https://github.com/ndionne/dofus-treasure-hunt-overlay/releases).
 
 ### Windows
 
@@ -30,7 +30,7 @@ Télécharger le fichier correspondant à votre distribution.
 
 ## Description
 
-Show an overlay of [Dofus Map - Hunt](https://dofus-map.com/hunt) for Dofus Map's users with one monitor.
+Show an overlay of [Dofus pour les Noobs - Hunt](https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors.html) for users with one monitor.
 
 ## Demo
 
@@ -38,7 +38,7 @@ Show an overlay of [Dofus Map - Hunt](https://dofus-map.com/hunt) for Dofus Map'
 
 ## Installation
 
-Download the latest release here [Releases](https://github.com/Kiyozz/dofus-hunt-overlay/releases).
+Download the latest release here [Releases](https://github.com/ndionne/dofus-treasure-hunt-overlay/releases).
 ,
 
 ### Windows
